@@ -1,7 +1,7 @@
 #================================================================================
 # Test_Windows_server_check.ps1 - windows server check pre and post migration
 # Auther: Suyog.mahajan@Test.net
-# Version - 1.2 [15thJune, 2021]
+# Version - 1.3 [19th August, 2021]
 #
 # 	Server checks (Windows), Test OS - windows 2012 r2, windows 2016, windows 2019, windows 10
 #   Run this script locally on server for which information is to be collected
@@ -147,6 +147,12 @@ $RprintHead = "<h2>Static routes</h2>"
 $Rprint = route print |%{"$_<br/>"}
 
 
+#The command below will get the route details on computer 
+$OpenportH = "<h2>Open ports</h2>"
+$OpenPort = netstat -aon |%{"$_<br/>"}
+
+
+
 #The command below will get the OS activation details on computer 
 $OSA = "<h2>OS activation details</h2>"
 $KMS = cscript C:\Windows\System32\slmgr.vbs /dlv |%{"$_<br/>"}
@@ -200,6 +206,13 @@ $NICdns = Get-DnsClient | ConvertTo-Html -As Table -Property InterfaceAlias,Inte
 #The command below will get the server default log file size
 $EventFileSize = Get-EventLog -list | ConvertTo-Html -As Table -Property MaximumKilobytes,MinimumRetentionDays,OverflowAction,Log -Fragment -PreContent "<h2>Event Log file size</h2>" 
 
+#The command below will get the server default log file size
+$Schtasks = Get-scheduledtask -taskpath \ | where-object{$_.state -ne "disabled"} | get-scheduledtaskinfo | ConvertTo-Html -As Table -Property TaskName, LastRunTime, LastTaskResult, TaskPath -Fragment -PreContent "<h2>Active Schedule tasks</h2>" 
+
+
+#Installed Roles and features
+$Roles_Features = get-windowsfeature | Where-Object{$_.installed -eq $true -and $_.featuretype -eq 'Role'} | ConvertTo-Html -As Table -Property name, installed -Fragment -PreContent "<h2>Installed Server Roles and Features</h2>" 
+
 
 #The command below will get the server System event log "ERROR" details
 $SystemEvent = Get-eventlog -LogName System -EntryType Error -After (Get-Date).AddHours(-24) | ConvertTo-Html -As Table -Property  EventID, source, TimeGenerated, Message -Fragment -PreContent "<h2>System Error events</h2>" 
@@ -210,8 +223,8 @@ $ApplicationEvent = Get-eventlog -LogName Application -EntryType Error -After (G
 
 
 #The command below will combine all the information gathered into a single HTML report
-$Report = ConvertTo-HTML -Body "$ComputerName $CDate $Cpuusage $TMemory $OSinfo $ProcessInfo $MemoryInfo $BiosInfo $TZone $DiscInfo $pagefile  $TopCPU $TopMemory    $Agentservice $AutoServicesInfo $ServicesInfo $NetworkDetails  $InstalledApp $InstalledUpdates $localusers $localAdminGroupMemebers $ShareFolders $WSUS $WSUSN $DNSresolve $DNSresolveN $IPV6 $IPV6Note $NICdns $IP $ipconfig $RprintHead $Rprint $OSA $KMS $firewallH $firewall $EventFileSize $SystemEvent $ApplicationEvent" -Head $header -Title "Computer Information Report" -PostContent "<p id='CreationDate'>Creation Date: $(Get-Date)</p>"
+$Report = ConvertTo-HTML -Body "$ComputerName $CDate $Cpuusage $TMemory $OSinfo $ProcessInfo $MemoryInfo $BiosInfo $TZone $DiscInfo $pagefile  $TopCPU $TopMemory    $Agentservice $AutoServicesInfo $ServicesInfo $NetworkDetails  $InstalledApp $InstalledUpdates $Roles_Features $localusers $localAdminGroupMemebers $ShareFolders $WSUS $WSUSN $DNSresolve $DNSresolveN $IPV6 $IPV6Note $NICdns $IP $ipconfig $RprintHead $Rprint $openportH $openport $OSA $KMS $firewallH $firewall $EventFileSize $Schtasks $SystemEvent $ApplicationEvent" -Head $header -Title "Computer Information Report" -PostContent "<p id='CreationDate'>Creation Date: $(Get-Date)</p>"
 
 #The command below will generate the report to an HTML file
-$Report | Out-File $PSScriptRoot\""$env:computername"_$((Get-Date).ToString("yyyyMMdd_HHmmss")).html"
+$Report | Out-File c:\temp\""$env:computername"_$((Get-Date).ToString("yyyyMMdd_HHmmss")).html"
 #
